@@ -257,6 +257,7 @@ def eliminar_todas_interfaces():
 def generar_topologia():
     G = nx.Graph()
     interfaces = Interface.query.all()
+    # Agregamos todas las conexiones al grafico
     for interface in interfaces:
         print(interfaces)
         G.add_edge("R"+str(interface.routera),"R"+str(interface.routerb),weight=interface.ip)
@@ -269,6 +270,7 @@ def generar_topologia():
     nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
     # Mostramos la grafica
     plt.title("Topologia")
+    # Guardamos la imagen de la topologia
     plt.savefig("static/IMG/topologia.png")
     time.sleep(1)
     topologia = os.path.join(app.config['UPLOAD_FOLDER'], 'topologia.png')
