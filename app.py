@@ -1,12 +1,17 @@
 from flask import Flask,request,render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from fucionesDatos import asignacion_direcciones_interfaz
 import networkx as nx
 import matplotlib.pyplot as plt
 import time
+import os
+
 
 
 app = Flask(__name__)
+IMG_FOLDER = os.path.join('static', 'IMG')
+app.config['UPLOAD_FOLDER'] = IMG_FOLDER
 app.config['SQLALCHEMY_DATABASE_URI']='sqlite:///dbApi.sqlite3'
 app.config['SECRET_KEY'] = "random string"
 db = SQLAlchemy(app)
@@ -24,20 +29,7 @@ migarte = Migrate(app,db)
 # -----------------------------------------------------------------------------
 
 # -----------------------------------Usuario-----------------------------------
-class User(db.Model):
-    _tablename_='user'
-    id=db.Column(db.Integer,primary_key=True)
-    name = db.Column(db.String(64))
 
-    def set_data(self,data):
-        self.id=data['id']
-        self.name=data['name']
-
-    def get_data(self):
-        return {
-            'id':self.id,
-            'name':self.name
-        }
 # -----------------------------------Routers-----------------------------------
 class Router(db.Model):
     _tablename_='router'
@@ -91,23 +83,26 @@ class Router(db.Model):
         }
         
 # -----------------------------------Interface-----------------------------------
-# El modelo interfaces es usado 
+# El modelo interfaces
 class Interface(db.Model):
     _tablename_='interface'
     ip = db.Column(db.String(64),primary_key=True)
     routera=db.Column(db.Integer,db.ForeignKey('router.id'))
     routerb=db.Column(db.Integer,db.ForeignKey('router.id'))
+    interfaz=db.Column(db.String(64))
 
     def set_data(self,data):
         self.ip=data['ip']
         self.routera=data['routera']
         self.routerb=data['routerb']
+        self.interfaz=data['interfaz']
 
     def get_data(self):
         return {
             'ip':self.ip,
             'routera':self.routera,
-            'routerb':self.routerb
+            'routerb':self.routerb,
+            'interfaz':self.interfaz
         }
 
 # -------------------------------------------------------------------------------
@@ -182,17 +177,41 @@ def eliminar_router(id):
             eliminar_interface(interface.ip)
     return f'<h1>Rourter eliminado</h1>'
 
+# Eliminar todos los routers
+@app.route("/router",methods=["DELETE"])
+def eliminar_todos_router():
+    routers=Router.query.all()
+    for router in routers:
+        db.session.delete(router)
+        # En caso de eliminar un router, eliminaremos las interfaces realicionadas a este
+        # Extraemos los registros de la tabla de interfaces
+        interfaces = Interface.query.all()
+        for interface in interfaces:
+            print(interface)
+            if interface.routera == router.id or interface.routerb == router.id:
+                eliminar_interface(interface.ip)
+    db.session.commit()
+    return f'<h1>Rourter eliminado</h1>'
+
 # ------------------------------------------------------------------------------
 # -----------------------------------Interface----------------------------------
 # ------------------------------------------------------------------------------
 
-# Agraegar router
+# Agraegar Intergace
 @app.route("/interface",methods=["POST"])
 def agregar_interface():
     interface = Interface()
     data=request.json
     interface.set_data(data)
+    # Agragamos el objeto interface a la base de datos
     db.session.add(interface)
+    # Agregamos las direcciones a cada extremo de la interfaes
+    # Recuperamos los objetos router de cada uno de los extremos de la conexion
+    routera=Router.query.get(interface.routera)
+    routerb=Router.query.get(interface.routerb)
+    # la funcion asignacion_direcciones_interfaz asigna las ip validas a la intefaz correspondiente
+    asignacion_direcciones_interfaz(routera,routerb,interface.interfaz,interface.ip)
+    # Hacemos el commit de los cambios
     db.session.commit()
     return f'<h1>Interface agregada</h1>'
 
@@ -219,6 +238,15 @@ def eliminar_interface(ip):
     db.session.commit()
     return f'<h1>Interface eliminada</h1>'
 
+# Eliminar todas las interface
+@app.route("/interface",methods=["DELETE"])
+def eliminar_todas_interfaces():
+    interfaces=Interface.query.all()
+    for interface in interfaces:
+        db.session.delete(interface)
+    db.session.commit()
+    return f'<h1>Interfaces eliminadas</h1>'
+
 # -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
 # -----------------------------------Funciones-----------------------------------
@@ -240,8 +268,9 @@ def generar_topologia():
     # Dibujamos las aristas
     nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
     # Mostramos la grafica
-    plt.title("Grafo no dirigido")
-    plt.savefig("topologia.jpg")
+    plt.title("Topologia")
+    plt.savefig("static/IMG/topologia.png")
     time.sleep(1)
-    return render_template("topologia.html",interfaces=interfaces)
+    topologia = os.path.join(app.config['UPLOAD_FOLDER'], 'topologia.png')
+    return render_template("topologia.html", image=topologia)
 
