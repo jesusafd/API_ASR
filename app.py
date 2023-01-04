@@ -2,6 +2,7 @@ from flask import Flask,request,render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from fucionesDatos import asignacion_direcciones_interfaz
+from Enrrutamiento import Enrrutamiento
 import networkx as nx
 import matplotlib.pyplot as plt
 import time
@@ -181,6 +182,8 @@ def eliminar_router(id):
 @app.route("/router",methods=["DELETE"])
 def eliminar_todos_router():
     routers=Router.query.all()
+    if len(routers)==0:
+        return f'<h1>No hay routers</h1>'
     for router in routers:
         db.session.delete(router)
         # En caso de eliminar un router, eliminaremos las interfaces realicionadas a este
@@ -203,17 +206,21 @@ def agregar_interface():
     interface = Interface()
     data=request.json
     interface.set_data(data)
-    # Agragamos el objeto interface a la base de datos
-    db.session.add(interface)
     # Agregamos las direcciones a cada extremo de la interfaes
     # Recuperamos los objetos router de cada uno de los extremos de la conexion
     routera=Router.query.get(interface.routera)
     routerb=Router.query.get(interface.routerb)
     # la funcion asignacion_direcciones_interfaz asigna las ip validas a la intefaz correspondiente
-    asignacion_direcciones_interfaz(routera,routerb,interface.interfaz,interface.ip)
+    # Y devuelve una cadena con el estado de la asgignacion
+    estado = asignacion_direcciones_interfaz(routera,routerb,interface.interfaz,interface.ip)
     # Hacemos el commit de los cambios
-    db.session.commit()
-    return f'<h1>Interface agregada</h1>'
+    if estado:
+        # Agragamos el objeto interface a la base de datos en caso de que se pudiera asignar
+        db.session.add(interface)
+        db.session.commit()
+        return f'<h1>Interface agregada</h1>'
+    else:
+        return f'<h1>Interface no agregada, puerto {interface.interfaz} ocupado</h1>'
 
 # listar interfaces
 @app.route("/interface",methods=["GET"])
@@ -231,7 +238,7 @@ def editar_interface():
     return f'<h1>interface editada</h1>'
 
 # Eliminar interface
-@app.route("/interface/<int:ip>",methods=["DELETE"])
+@app.route("/interface/<ip>",methods=["DELETE"])
 def eliminar_interface(ip):
     interface=Interface.query.get_or_404(ip)
     db.session.delete(interface)
@@ -252,6 +259,9 @@ def eliminar_todas_interfaces():
 # -----------------------------------Funciones-----------------------------------
 # -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
+
+
+# -----------------------------------Imagenes----------------------------------
 
 @app.route("/topologia",methods=['GET'])
 def generar_topologia():
@@ -276,3 +286,86 @@ def generar_topologia():
     topologia = os.path.join(app.config['UPLOAD_FOLDER'], 'topologia.png')
     return render_template("topologia.html", image=topologia)
 
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+# -----------------------------------Enrrutamiento----------------------------------
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+
+# ----------------------------------------RIP---------------------------------------
+
+@app.route("/activarRIP/<ip>/<int:id>",methods=['GET'])
+def activar_rip(ip,id):
+    '''
+    Los argumetos recibidos son la direccion ip de la interface a la que nos conectareos
+    por ssh para realizar la debida configuracion y el id del router a configurar
+    '''
+    # Extraemos todas las interfaces de la bd
+    interfaces = Interface.query.all()
+    interfacesIP = []
+    for interface in interfaces:
+        if interface.routera == id or interface.routerb == id:
+            interfacesIP.append(interface)
+    Enrrutamiento.activar_rip(ip,interfacesIP)
+    return f'<h1>RIP activado en el router {id}</h1>'
+
+@app.route("/desactivarRIP/<ip>",methods=['GET'])
+def desactivar_rip(ip):
+    '''
+    El argumento recibido es la direccion ip de la interface del router que vamos a configurar
+    por ssh
+    '''
+    Enrrutamiento.desactivar_rip(ip)
+    return f'<h1>RIP desactivado en el router {id}</h1>'
+
+# ---------------------------------------EIGRP--------------------------------------
+
+@app.route("/activarEIGRP/<ip>/<int:id>",methods=['GET'])
+def activar_eigrp(ip,id):
+    '''
+    Los argumetos recibidos son la direccion ip de la interface a la que nos conectareos
+    por ssh para realizar la debida configuracion y el id del router a configurar
+    '''
+    # Extraemos todas las interfaces de la bd
+    interfaces = Interface.query.all()
+    interfacesIP = []
+    for interface in interfaces:
+        if interface.routera == id or interface.routerb == id:
+            interfacesIP.append(interface)
+    Enrrutamiento.activar_eigrp(ip,interfacesIP)
+    return f'<h1>RIP activado en el router {id}</h1>'
+
+@app.route("/desactivarEIGRP/<ip>",methods=['GET'])
+def desactivar_eigrp(ip):
+    '''
+    El argumento recibido es la direccion ip de la interface del router que vamos a configurar
+    por ssh
+    '''
+    Enrrutamiento.desactivar_eigrp(ip)
+    return f'<h1>RIP desactivado en el router {id}</h1>'
+
+# ---------------------------------------OSPF---------------------------------------
+
+@app.route("/activarOSPF/<ip>/<int:id>",methods=['GET'])
+def activar_ospf(ip,id):
+    '''
+    Los argumetos recibidos son la direccion ip de la interface a la que nos conectareos
+    por ssh para realizar la debida configuracion y el id del router a configurar
+    '''
+    # Extraemos todas las interfaces de la bd
+    interfaces = Interface.query.all()
+    interfacesIP = []
+    for interface in interfaces:
+        if interface.routera == id or interface.routerb == id:
+            interfacesIP.append(interface)
+    Enrrutamiento.activar_ospf(ip,interfacesIP)
+    return f'<h1>RIP activado en el router {id}</h1>'
+
+@app.route("/desactivarOSPF/<ip>",methods=['GET'])
+def desactivar_ospf(ip):
+    '''
+    El argumento recibido es la direccion ip de la interface del router que vamos a configurar
+    por ssh
+    '''
+    Enrrutamiento.desactivar_ospf(ip)
+    return f'<h1>RIP desactivado en el router {id}</h1>'

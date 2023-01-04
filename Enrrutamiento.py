@@ -1,21 +1,18 @@
 import paramiko
 import time
 class Enrrutamiento():
-    def __init__(self,user,password,espera):
-        '''
-        Las clase Enrrutamiento se encarga activar y desactivar
-        los tres diferentes tipos de enrrutamineto para este proyecto 
-        (rip, eigrp, ospf) el constructor de este objeto recibe 3 
-        argumentos.
-        user: es el nombre de usuario del router del dispositivo
-        password: es la contraseña del router
-        espera: es el tiempo de espera para que los comandos se ejecuten
-        '''
-        self._user=user
-        self._password=password
-        self._espera=espera
+    '''
+    Las clase Enrrutamiento se encarga activar y desactivar
+    los tres diferentes tipos de enrrutamineto para este proyecto 
+    (rip, eigrp, ospf)
+    '''
+    User='admin'
+    Password='admin'
+    Espera=3
 
-    def activar_rip(self,ip,port,interfaces):
+
+    @classmethod
+    def activar_rip(cls,ip,interfaces):
         '''
         activar_rip es el metodo encargado de activar el protocolo de
         enrrutamiento rip en el router especificado, este metodo recibe
@@ -34,23 +31,24 @@ class Enrrutamiento():
         comando += 'no auto-summary\n'
         comando += 'end\n'
         comando += 'wr\n'
-
         # Inicia un cliente SSH
         ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
+        # Establecer política por @classmethod
+        # defecto para localizar la llave del host localmente
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # Conectarse
-        ssh_client.connect(ip, port, self._user, self._password)
+        ssh_client.connect(ip, 22, Enrrutamiento.User, Enrrutamiento.Password)
         # Ejecutar un comando de forma remota capturando entrada, salida y error estándar
         entrada, salida, error = ssh_client.exec_command(comando)
         # Esperamos 2 segundos para que se termine la ejecucion de los comandos
-        time.sleep(self._espera)
+        time.sleep(Enrrutamiento.Espera)
         # Mostrar la salida estándar en pantalla
         print (salida.read())
         # Cerrar la conexión
         ssh_client.close()
 
-    def desactivar_rip(self,ip,port):
+    @classmethod
+    def desactivar_rip(cls,ip):
         '''
         desactivar_rip es el metodo encargado de desactivar el protocolo de
         enrrutamiento rip en el router especificado, este metodo recibe
@@ -65,20 +63,22 @@ class Enrrutamiento():
         comando += 'wr\n'
         # Inicia un cliente SSH
         ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
+        # Establecer política por @classmethod
+        # defecto para localizar la llave del host localmente
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # Conectarse
-        ssh_client.connect(ip, port, self._user, self._password)
+        ssh_client.connect(ip, 22, Enrrutamiento.User, Enrrutamiento.Password)
         # Ejecutar un comando de forma remota capturando entrada, salida y error estándar
         entrada, salida, error = ssh_client.exec_command(comando)
         # Esperamos 2 segundos para que se termine la ejecucion de los comandos
-        time.sleep(self._espera)
+        time.sleep(Enrrutamiento.Espera)
         # Mostrar la salida estándar en pantalla
         print (salida.read())
         # Cerrar la conexión
         ssh_client.close()
 
-    def activar_ospf(self,ip,port,interfaces):
+    @classmethod
+    def activar_ospf(cls,ip,interfaces):
         '''
         activar_ospf es el metodo encargado de activar el protocolo de
         enrrutamiento ospf en el router especificado, este metodo recibe
@@ -98,20 +98,22 @@ class Enrrutamiento():
 
         # Inicia un cliente SSH
         ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
+        # Establecer política por @classmethod
+        # defecto para localizar la llave del host localmente
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # Conectarse
-        ssh_client.connect(ip, port, self._user, self._password)
+        ssh_client.connect(ip, 22, Enrrutamiento.User, Enrrutamiento.Password)
         # Ejecutar un comando de forma remota capturando entrada, salida y error estándar
         entrada, salida, error = ssh_client.exec_command(comando)
         # Esperamos 2 segundos para que se termine la ejecucion de los comandos
-        time.sleep(self._espera)
+        time.sleep(Enrrutamiento.Espera)
         # Mostrar la salida estándar en pantalla
         print (salida.read())
         # Cerrar la conexión
         ssh_client.close()
 
-    def desactivar_ospf(self,ip,port):
+    @classmethod
+    def desactivar_ospf(cls,ip):
         '''
         desactivar_ospf es el metodo encargado de desactivar el protocolo de
         enrrutamiento ospf en el router especificado, este metodo recibe
@@ -126,20 +128,22 @@ class Enrrutamiento():
         comando += 'wr\n'
         # Inicia un cliente SSH
         ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
+        # Establecer política por @classmethod
+        # defecto para localizar la llave del host localmente
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # Conectarse
-        ssh_client.connect(ip, port, self._user, self._password)
+        ssh_client.connect(ip, 22, Enrrutamiento.User, Enrrutamiento.Password)
         # Ejecutar un comando de forma remota capturando entrada, salida y error estándar
         entrada, salida, error = ssh_client.exec_command(comando)
         # Esperamos 2 segundos para que se termine la ejecucion de los comandos
-        time.sleep(self._espera)
+        time.sleep(Enrrutamiento.Espera)
         # Mostrar la salida estándar en pantalla
         print (salida.read())
         # Cerrar la conexión
         ssh_client.close()
 
-    def activar_eigrp(self,ip,port,interfaces):
+    @classmethod
+    def activar_eigrp(cls,ip,interfaces):
         '''
         activar_eigrp es el metodo encargado de activar el protocolo de
         enrrutamiento eigrp en el router especificado, este metodo recibe
@@ -159,20 +163,22 @@ class Enrrutamiento():
 
         # Inicia un cliente SSH
         ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
+        # Establecer política por @classmethod
+        # defecto para localizar la llave del host localmente
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # Conectarse
-        ssh_client.connect(ip, port, self._user, self._password)
+        ssh_client.connect(ip, 22, Enrrutamiento.User, Enrrutamiento.Password)
         # Ejecutar un comando de forma remota capturando entrada, salida y error estándar
         entrada, salida, error = ssh_client.exec_command(comando)
         # Esperamos 2 segundos para que se termine la ejecucion de los comandos
-        time.sleep(self._espera)
+        time.sleep(Enrrutamiento.Espera)
         # Mostrar la salida estándar en pantalla
         print (salida.read())
         # Cerrar la conexión
         ssh_client.close()
 
-    def desactivar_eigrp(self,ip,port):
+    @classmethod
+    def desactivar_eigrp(cls,ip):
         '''
         desactivar_eigrp es el metodo encargado de desactivar el protocolo de
         enrrutamiento eigrp en el router especificado, este metodo recibe
@@ -187,14 +193,15 @@ class Enrrutamiento():
         comando += 'wr\n'
         # Inicia un cliente SSH
         ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
+        # Establecer política por @classmethod
+        # defecto para localizar la llave del host localmente
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # Conectarse
-        ssh_client.connect(ip, port, self._user, self._password)
+        ssh_client.connect(ip, 22, Enrrutamiento.User, Enrrutamiento.Password)
         # Ejecutar un comando de forma remota capturando entrada, salida y error estándar
         entrada, salida, error = ssh_client.exec_command(comando)
         # Esperamos 2 segundos para que se termine la ejecucion de los comandos
-        time.sleep(self._espera)
+        time.sleep(Enrrutamiento.Espera)
         # Mostrar la salida estándar en pantalla
         print (salida.read())
         # Cerrar la conexión
