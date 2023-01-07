@@ -54,19 +54,20 @@ class Router(db.Model):
 
     def set_data(self,data):
         self.id=data['id']
-        self.f0_0=None
-        self.f1_0=None
-        self.f1_1=None
-        self.f2_0=None
-        self.f2_1=None
-        self.f3_0=None
-        self.f3_1=None
-        self.f4_0=None
-        self.f4_1=None
-        self.f5_0=None
-        self.f5_1=None
-        self.f6_0=None
-        self.f6_1=None
+        # La interfaz f0_0 de todos los routers simpres se usara para conectar pcs o switches
+        self.f0_0=""
+        self.f1_0=""
+        self.f1_1=""
+        self.f2_0=""
+        self.f2_1=""
+        self.f3_0=""
+        self.f3_1=""
+        self.f4_0=""
+        self.f4_1=""
+        self.f5_0=""
+        self.f5_1=""
+        self.f6_0=""
+        self.f6_1=""
 
     def get_data(self):
         return{
@@ -86,26 +87,49 @@ class Router(db.Model):
             "f6_1":self.f6_1,
         }
         
+    
+# --------------------------------------PCs--------------------------------------
+
+class PC(db.Model):
+    '''
+    El modelo PC 
+    '''
+    _tablename_='pc'
+    id = db.Column(db.String(64),primary_key=True)
+    # e es la interfaz fasethernet
+    e = db.Column(db.String(64))
+
+    def set_data(self,data):
+        self.id=data['id']
+        self.e=""
+
+    def get_data(self):
+        return{
+            "id":self.id,
+            "e":self.e,
+        }
+        
+    
 # -----------------------------------Interface-----------------------------------
 # El modelo interfaces
 class Interface(db.Model):
     _tablename_='interface'
     ip = db.Column(db.String(64),primary_key=True)
-    routera=db.Column(db.String(64),db.ForeignKey('router.id'))
-    routerb=db.Column(db.String(64),db.ForeignKey('router.id'))
+    dispositivoa=db.Column(db.String(64))
+    dispositivob=db.Column(db.String(64))
     interfaz=db.Column(db.String(64))
 
     def set_data(self,data):
         self.ip=data['ip']
-        self.routera=data['routera']
-        self.routerb=data['routerb']
+        self.dispositivoa=data['dispositivoa']
+        self.dispositivob=data['dispositivob']
         self.interfaz=data['interfaz']
 
     def get_data(self):
         return {
             'ip':self.ip,
-            'routera':self.routera,
-            'routerb':self.routerb,
+            'dispositivoa':self.dispositivoa,
+            'dispositivoa':self.dispositivob,
             'interfaz':self.interfaz
         }
 
@@ -127,11 +151,6 @@ class Interface(db.Model):
 # -------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
-# -----------------------------------Usuarios-----------------------------------
-# ------------------------------------------------------------------------------
-
-
-# ------------------------------------------------------------------------------
 # -----------------------------------Routers-----------------------------------
 # ------------------------------------------------------------------------------
 # Agraegar router
@@ -145,7 +164,7 @@ def agregar_routers():
     return f'<h1>Router agregado</h1>'
 
 # Listar todos los routers
-@app.route("/router/<int:id>",methods=["GET"])
+@app.route("/router/<id>",methods=["GET"])
 def ver_router(id):
     router=Router.query.get_or_404(id)
     return render_template("router.html",router=router)
@@ -167,7 +186,7 @@ def editar_router():
     return f'<h1>Reouter editado</h1>'
 
 # Eliminar router
-@app.route("/router/<int:id>",methods=["DELETE"])
+@app.route("/router/<id>",methods=["DELETE"])
 def eliminar_router(id):
     router=Router.query.get_or_404(id)
     db.session.delete(router)
@@ -194,10 +213,79 @@ def eliminar_todos_router():
         interfaces = Interface.query.all()
         for interface in interfaces:
             print(interface)
-            if interface.routera == router.id or interface.routerb == router.id:
+            if interface.dispositivoa == router.id or interface.dispositivob == router.id:
                 eliminar_interface(interface.ip)
     db.session.commit()
     return f'<h1>Rourter eliminado</h1>'
+
+
+# ------------------------------------------------------------------------------
+# --------------------------------------PCs-------------------------------------
+# ------------------------------------------------------------------------------
+# Agraegar pc
+@app.route("/pc",methods=["POST"])
+def agregar_pc():
+    pc = PC()
+    data=request.json
+    pc.set_data(data)
+    db.session.add(pc)
+    db.session.commit()
+    return f'<h1>PC agregada</h1>'
+
+# Listar todos las PCs
+@app.route("/pc/<id>",methods=["GET"])
+def ver_pc(id):
+    pc=PC.query.get_or_404(id)
+    return render_template("pc.html",pc=pc)
+
+# Ver pc especifico
+@app.route("/pc",methods=["GET"])
+def listar_pcs():
+    pcs=PC.query.all()
+    print(pcs)
+    return render_template("pcs.html",pcs=pcs)
+
+# Editar pc
+@app.route("/pc",methods=['PUT'])
+def editar_pc():
+    data=request.json
+    pc = PC.query.get_or_404(data['id'])
+    pc.set_data(data)
+    db.session.commit()
+    return f'<h1>PC editado</h1>'
+
+# Eliminar router
+@app.route("/pc/<id>",methods=["DELETE"])
+def eliminar_pc(id):
+    pc=PC.query.get_or_404(id)
+    db.session.delete(pc)
+    db.session.commit()
+    # En caso de eliminar un router, eliminaremos las interfaces realicionadas a este
+    # Extraemos los registros de la tabla de interfaces
+    interfaces = Interface.query.all()
+    for interface in interfaces:
+        print(interface)
+        if interface.dispositivoa == id or interface.dispositivob == id:
+            eliminar_interface(interface.ip)
+    return f'<h1>PC eliminada</h1>'
+
+# Eliminar todos los routers
+@app.route("/pc",methods=["DELETE"])
+def eliminar_todos_pc():
+    pcs=PC.query.all()
+    if len(pcs)==0:
+        return f'<h1>No hay routers</h1>'
+    for pc in pcs:
+        db.session.delete(pc)
+        # En caso de eliminar un router, eliminaremos las interfaces realicionadas a este
+        # Extraemos los registros de la tabla de interfaces
+        interfaces = Interface.query.all()
+        for interface in interfaces:
+            print(interface)
+            if interface.dispositivoa == pc.id or interface.dispositivob == pc.id:
+                eliminar_interface(interface.ip)
+    db.session.commit()
+    return f'<h1>PCs eliminadas</h1>'
 
 # ------------------------------------------------------------------------------
 # -----------------------------------Interface----------------------------------
@@ -210,12 +298,17 @@ def agregar_interface():
     data=request.json
     interface.set_data(data)
     # Agregamos las direcciones a cada extremo de la interfaes
-    # Recuperamos los objetos router de cada uno de los extremos de la conexion
-    routera=Router.query.get(interface.routera)
-    routerb=Router.query.get(interface.routerb)
+    # Recuperamos los objetos dispositivo de cada uno de los extremos de la conexion
+    # en caso de que se conecte una pc al router esta siempre debera venir en el segundo dispositvo
+    dispositivoa=Router.query.get(interface.dispositivoa)
+    # Si la interfaz es una e quiere decir que conectaremos una pc de lo contrario sera un router
+    if interface.interfaz == 'e':
+        dispositivob=PC.query.get(interface.dispositivob)
+    else:
+        dispositivob=Router.query.get(interface.dispositivob)
     # la funcion asignacion_direcciones_interfaz asigna las ip validas a la intefaz correspondiente
     # Y devuelve una cadena con el estado de la asgignacion
-    estado = asignacion_direcciones_interfaz(routera,routerb,interface.interfaz,interface.ip)
+    estado = asignacion_direcciones_interfaz(dispositivoa,dispositivob,interface.interfaz,interface.ip)
     # Hacemos el commit de los cambios
     if estado:
         # Agragamos el objeto interface a la base de datos en caso de que se pudiera asignar
@@ -273,7 +366,7 @@ def generar_topologia():
     # Agregamos todas las conexiones al grafico
     for interface in interfaces:
         print(interfaces)
-        G.add_edge("R"+str(interface.routera),"R"+str(interface.routerb),weight=interface.ip)
+        G.add_edge(interface.dispositivoa,interface.dispositivob,weight=interface.ip)
     # Definimos la posicion del grafo
     pos = nx.layout.planar_layout(G)
     # Dibujamos los nodos
