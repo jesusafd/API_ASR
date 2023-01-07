@@ -33,8 +33,11 @@ migarte = Migrate(app,db)
 
 # -----------------------------------Routers-----------------------------------
 class Router(db.Model):
+    '''
+    El modelo router 
+    '''
     _tablename_='router'
-    id = db.Column(db.Integer,primary_key=True)
+    id = db.Column(db.String(64),primary_key=True)
     f0_0 = db.Column(db.String(64))
     f1_0 = db.Column(db.String(64))
     f1_1 = db.Column(db.String(64))
@@ -51,19 +54,19 @@ class Router(db.Model):
 
     def set_data(self,data):
         self.id=data['id']
-        self.f0_0=data['f0_0']
-        self.f1_0=data['f1_0']
-        self.f1_1=data['f1_1']
-        self.f2_0=data['f2_0']
-        self.f2_1=data['f2_1']
-        self.f3_0=data['f3_0']
-        self.f3_1=data['f3_1']
-        self.f4_0=data['f4_0']
-        self.f4_1=data['f4_1']
-        self.f5_0=data['f5_0']
-        self.f5_1=data['f5_1']
-        self.f6_0=data['f6_0']
-        self.f6_1=data['f6_1']
+        self.f0_0=None
+        self.f1_0=None
+        self.f1_1=None
+        self.f2_0=None
+        self.f2_1=None
+        self.f3_0=None
+        self.f3_1=None
+        self.f4_0=None
+        self.f4_1=None
+        self.f5_0=None
+        self.f5_1=None
+        self.f6_0=None
+        self.f6_1=None
 
     def get_data(self):
         return{
@@ -88,8 +91,8 @@ class Router(db.Model):
 class Interface(db.Model):
     _tablename_='interface'
     ip = db.Column(db.String(64),primary_key=True)
-    routera=db.Column(db.Integer,db.ForeignKey('router.id'))
-    routerb=db.Column(db.Integer,db.ForeignKey('router.id'))
+    routera=db.Column(db.String(64),db.ForeignKey('router.id'))
+    routerb=db.Column(db.String(64),db.ForeignKey('router.id'))
     interfaz=db.Column(db.String(64))
 
     def set_data(self,data):
