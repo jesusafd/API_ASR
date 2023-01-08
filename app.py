@@ -2,12 +2,13 @@ from flask import Flask,request,render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from funcionesDatos import asignacion_direcciones_interfaz
-from Enrrutamiento import Enrrutamiento
+from conexionTelnet import enrrutamineto_telnet
+import rutas as r
 import networkx as nx
 import matplotlib.pyplot as plt
 import time
 import os
-
+import socket
 
 
 app = Flask(__name__)
@@ -142,6 +143,25 @@ class Interface(db.Model):
 # -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
 
+
+
+# -------------------------------------------------------------------------------
+# -----------------------------Limpiar topologia---------------------------------
+# -------------------------------------------------------------------------------
+
+@app.route("/limpiar",methods=["GET"])
+def limpiar():
+    routers = Router.query.all()
+    for router in routers:
+        db.session.delete(router)
+    interfaces = Interface.query.all()
+    for interface in interfaces:
+        db.session.delete(interface)
+    pcs = PC.query.all()
+    for pc in pcs:
+        db.session.delete(pc)
+    db.session.commit()
+    return f'<h1>Topologia eliminada</h1>'
 
 
 # -------------------------------------------------------------------------------
@@ -388,80 +408,38 @@ def generar_topologia():
 # ----------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------
 
-# ----------------------------------------RIP---------------------------------------
-
-@app.route("/activarRIP/<ip>/<int:id>",methods=['GET'])
-def activar_rip(ip,id):
+@app.route("/enrrutar",methods=["GET"])
+@app.route("/enrrutar/<protocolo>",methods=["GET"])
+@app.route("/enrrutar/<protocolo>/<id>",methods=["GET"])
+def enrrutar(protocolo="RIP",id="PCMV"):
     '''
-    Los argumetos recibidos son la direccion ip de la interface a la que nos conectareos
-    por ssh para realizar la debida configuracion y el id del router a configurar
+    El endpoint enrrutar puede puede recibiir dos parametros
+    protocolo: el cual sera el protocolo de enrrutamineto dinamico por defecto es RIP
+    id: el id del dispositivo desde el cual comenzaremos a enrrutar, en caso de que se 
+        tengan mas maquinas virtuales conectadas, por defecto es PCMV
     '''
-    # Extraemos todas las interfaces de la bd
+    G = nx.Graph()
     interfaces = Interface.query.all()
-    interfacesIP = []
+    # Generamos el grafico con todas las interfaces
     for interface in interfaces:
-        if interface.routera == id or interface.routerb == id:
-            interfacesIP.append(interface)
-    Enrrutamiento.activar_rip(ip,interfacesIP)
-    return f'<h1>RIP activado en el router {id}</h1>'
-
-@app.route("/desactivarRIP/<ip>",methods=['GET'])
-def desactivar_rip(ip):
-    '''
-    El argumento recibido es la direccion ip de la interface del router que vamos a configurar
-    por ssh
-    '''
-    Enrrutamiento.desactivar_rip(ip)
-    return f'<h1>RIP desactivado en el router {id}</h1>'
-
-# ---------------------------------------EIGRP--------------------------------------
-
-@app.route("/activarEIGRP/<ip>/<int:id>",methods=['GET'])
-def activar_eigrp(ip,id):
-    '''
-    Los argumetos recibidos son la direccion ip de la interface a la que nos conectareos
-    por ssh para realizar la debida configuracion y el id del router a configurar
-    '''
-    # Extraemos todas las interfaces de la bd
-    interfaces = Interface.query.all()
-    interfacesIP = []
-    for interface in interfaces:
-        if interface.routera == id or interface.routerb == id:
-            interfacesIP.append(interface)
-    Enrrutamiento.activar_eigrp(ip,interfacesIP)
-    return f'<h1>RIP activado en el router {id}</h1>'
-
-@app.route("/desactivarEIGRP/<ip>",methods=['GET'])
-def desactivar_eigrp(ip):
-    '''
-    El argumento recibido es la direccion ip de la interface del router que vamos a configurar
-    por ssh
-    '''
-    Enrrutamiento.desactivar_eigrp(ip)
-    return f'<h1>RIP desactivado en el router {id}</h1>'
-
-# ---------------------------------------OSPF---------------------------------------
-
-@app.route("/activarOSPF/<ip>/<int:id>",methods=['GET'])
-def activar_ospf(ip,id):
-    '''
-    Los argumetos recibidos son la direccion ip de la interface a la que nos conectareos
-    por ssh para realizar la debida configuracion y el id del router a configurar
-    '''
-    # Extraemos todas las interfaces de la bd
-    interfaces = Interface.query.all()
-    interfacesIP = []
-    for interface in interfaces:
-        if interface.routera == id or interface.routerb == id:
-            interfacesIP.append(interface)
-    Enrrutamiento.activar_ospf(ip,interfacesIP)
-    return f'<h1>RIP activado en el router {id}</h1>'
-
-@app.route("/desactivarOSPF/<ip>",methods=['GET'])
-def desactivar_ospf(ip):
-    '''
-    El argumento recibido es la direccion ip de la interface del router que vamos a configurar
-    por ssh
-    '''
-    Enrrutamiento.desactivar_ospf(ip)
-    return f'<h1>RIP desactivado en el router {id}</h1>'
+        G.add_edge(interface.dispositivoa,interface.dispositivob,IP=interface.ip)
+    rutas = r.rutas(G,id)
+    # Ahora obtenemos las direcciones ip (network) para el enrrutamiento de cada router
+    network = {}
+    for llave in rutas:
+        aux = []
+        for interfaz in interfaces:
+            if interfaz.dispositivoa == llave or  interfaz.dispositivob == llave:
+                aux.append(interfaz.ip)
+        network[llave]=aux
+    print(rutas)
+    print(network)
+    # Llamaremos a enrrutamineto_telnet para realizar un levantamiento de enrrutamiento
+    # dinamico por medio de una sesion telnet
+    for llave,ruta in rutas.items():
+        # Creamos el socket que usaremos para conectarnos por telnet
+        cliente = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        # Nos conectamos a la direccion especificada
+        cliente.connect((ruta[0],23))
+        enrrutamineto_telnet(cliente,llave,ruta[1:],network[llave],protocolo)
+    return '<h1>Enrrutado</h1>'
