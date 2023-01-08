@@ -4,26 +4,24 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=|, initial-scale=1.0">
-    <title>Router</title>
+    <title>Conexiones</title>
 </head>
 <body>
-    <h1>Router</h1>
+    <h1>Conexiones</h1>
     <table border="1">
         <thead>
             <tr>
-                <td>Key</td>
-                <td>Value</td>
+                <td>ID</td>
+                <td>tipo</td>
             </tr>
         </thead> 
         <tbody>
-            <tr>
-                <td>ID:</td>
-                <td>{{pc.id}}</td>
-            </tr>
-            <tr>
-                <td>Interfaz ethernet</td>
-                <td>{{pc.e}}</td>
-            </tr>
+            {% for conexion in conexiones%}
+                <tr>
+                    <td>{{conexion.id}}</td>
+                    <td>{{conexion.tipo}}</td>
+                </tr>
+            {% endfor %}
         </tbody>
     </table>
 </body>

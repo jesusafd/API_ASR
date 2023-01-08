@@ -134,6 +134,17 @@ class Interface(db.Model):
             'interfaz':self.interfaz
         }
 
+# -----------------------------------Usuarios-----------------------------------
+class Conexion(db.Model):
+    _tablename_='conexion'
+    id = db.Column(db.String(64),primary_key=True)
+    tipo = db.Column(db.String(64))
+
+    def set_data(self,data):
+        self.id=data['id']
+        self.tipo=data['tipo']
+
+
 # -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
@@ -180,6 +191,10 @@ def agregar_routers():
     data=request.json
     router.set_data(data)
     db.session.add(router)
+    # Agregamos por defecto un usuario telnet
+    conexion = Conexion()
+    conexion.set_data({'id':router.id,'tipo':'telnet'})
+    db.session.add(conexion)
     db.session.commit()
     return f'<h1>Router agregado</h1>'
 
@@ -370,6 +385,17 @@ def eliminar_todas_interfaces():
     db.session.commit()
     return f'<h1>Interfaces eliminadas</h1>'
 
+# ------------------------------------------------------------------------------
+# -----------------------------------Usuarios-----------------------------------
+# ------------------------------------------------------------------------------
+# Para los conexiones ya sea telnet o ssh lo unico que nos importa es ver la lista de estos
+# Ver conexiones
+@app.route("/conexiones",methods=["GET"])
+def listar_conexiones():
+    conexiones=Conexion.query.all()
+    print(conexiones)
+    return render_template("conexiones.html",conexiones=conexiones)
+
 # -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
 # -----------------------------------Funciones-----------------------------------
@@ -443,3 +469,11 @@ def enrrutar(protocolo="RIP",id="PCMV"):
         cliente.connect((ruta[0],23))
         enrrutamineto_telnet(cliente,llave,ruta[1:],network[llave],protocolo)
     return '<h1>Enrrutado</h1>'
+
+@app.route("/enrrutar/<protocolo>/<id>",methods=["DELETE"])
+def desenrrutar(protocolo):
+    '''
+    Es el endpoint encargado de realizar la baja del enrrutamiento dinamico especificado
+    comenzando desdesde el dispoositivo indicado
+    '''
+    pass

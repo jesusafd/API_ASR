@@ -1,15 +1,18 @@
-import paramiko
-import time
 class Enrrutamiento():
+    '''
+    La clase Enrrutamiento es una clase con metodos statico, los cuales proporcionan los
+    comandos necesarios para realizar la activacion o des activacion de 3 protocolos de 
+    enrrutamiento dinamico (RIP, OSPF, EIGRP)
+    '''
     @classmethod
     def activar_rip(cls,network):
         '''
-        activar_rip es el metodo encargado de activar el protocolo de
-        enrrutamiento rip en el router especificado, este metodo recibe
-        3 argumentos:
-        ip: la direccion ip de la interface del router que desamos configurar
-        port: el puerto a conectar
-        interfaces: es una lista de las interfaces conectadas al router
+        El metdo genera el comando necesario para levantar el enrruatamiento dinamico RIP
+        en cualquier router
+
+        Parametros
+
+        network: es una lista de las direcciones ip que estaran conectadas al router
         '''
         # Creamos el comando a ejecutar en el router
         comando = 'configure terminal\n'
@@ -24,14 +27,7 @@ class Enrrutamiento():
         return comando
 
     @classmethod
-    def desactivar_rip(cls,ip):
-        '''
-        desactivar_rip es el metodo encargado de desactivar el protocolo de
-        enrrutamiento rip en el router especificado, este metodo recibe
-        dos parametros:
-        ip: la direccion ip de la interface del router que desamos configurar
-        port: el puerto a conectar
-        '''
+    def desactivar_rip(cls):
         # Creamos el comando a ejecutar en el router
         comando = 'configure terminal\n'
         comando += 'no router rip\n'
@@ -42,12 +38,12 @@ class Enrrutamiento():
     @classmethod
     def activar_ospf(cls,network):
         '''
-        activar_ospf es el metodo encargado de activar el protocolo de
-        enrrutamiento ospf en el router especificado, este metodo recibe
-        3 argumentos:
-        ip: la direccion ip de la interface del router que desamos configurar
-        port: el puerto a conectar
-        interfaces: es una lista de las interfaces conectadas al router
+        El metdo genera el comando necesario para levantar el enrruatamiento dinamico OSPF
+        en cualquier router
+
+        Parametros
+
+        network: es una lista de las direcciones ip que estaran conectadas al router
         '''
         # Creamos el comando a ejecutar en el router
         comando = 'configure terminal\n'
@@ -60,14 +56,7 @@ class Enrrutamiento():
         return comando
 
     @classmethod
-    def desactivar_ospf(cls,ip):
-        '''
-        desactivar_ospf es el metodo encargado de desactivar el protocolo de
-        enrrutamiento ospf en el router especificado, este metodo recibe
-        dos parametros:
-        ip: la direccion ip de la interface del router que desamos configurar
-        port: el puerto a conectar
-        '''
+    def desactivar_ospf(cls):
         # Creamos el comando a ejecutar en el router
         comando = 'configure terminal\n'
         comando += 'no router ospf 1\n'
@@ -78,12 +67,12 @@ class Enrrutamiento():
     @classmethod
     def activar_eigrp(cls,network):
         '''
-        activar_eigrp es el metodo encargado de activar el protocolo de
-        enrrutamiento eigrp en el router especificado, este metodo recibe
-        3 argumentos:
-        ip: la direccion ip de la interface del router que desamos configurar
-        port: el puerto a conectar
-        interfaces: es una lista de las interfaces conectadas al router
+        El metdo genera el comando necesario para levantar el enrruatamiento dinamico EIGRP
+        en cualquier router
+
+        Parametros
+
+        network: es una lista de las direcciones ip que estaran conectadas al router
         '''
         # Creamos el comando a ejecutar en el router
         comando = 'configure terminal\n'
@@ -96,14 +85,7 @@ class Enrrutamiento():
         return comando
 
     @classmethod
-    def desactivar_eigrp(cls,ip):
-        '''
-        desactivar_eigrp es el metodo encargado de desactivar el protocolo de
-        enrrutamiento eigrp en el router especificado, este metodo recibe
-        dos parametros:
-        ip: la direccion ip de la interface del router que desamos configurar
-        port: el puerto a conectar
-        '''
+    def desactivar_eigrp(cls):
         # Creamos el comando a ejecutar en el router
         comando = 'configure terminal\n'
         comando += 'no router eigrp 22\n'
