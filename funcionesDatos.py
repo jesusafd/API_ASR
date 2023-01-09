@@ -1,5 +1,10 @@
 
 def asignacion_direcciones_interfaz(dispositivoa,dispositivob,interfaz,ip):
+    '''
+    asignacion_direcciones_interfaz Es la funcion que se encarga de asignar las direcciones ip a las interfaces de los routers
+    en el caso de una conexion router-router se usara la misma interface en ambos routers, en el caso de conexion router-pc
+    se usara la interface f0_0 en el router y en la pc la interface e
+    '''
     # Separamos los octetos de la direccion ip de la interface para poder asignar una ip a cada extremo del conexion
     octetos=ip.split(".")
     # La primera direccion valida la asiganmos al lado a de la conexion
@@ -109,3 +114,37 @@ def asignacion_direcciones_interfaz(dispositivoa,dispositivob,interfaz,ip):
             return True
         else:
             return False
+
+def extraccion_ip_interfaz(router):
+    '''
+    extraccion_ip_interfaz busca una direccion ip entre las interfaces del router que no sea valida (no vacia)
+    y la devuelve, en caso de no encontrar devolvera una cadena vacia lo cual para python es un valor negativo
+    '''
+    if router.f0_0 != "":
+        return router.f0_0
+    elif router.f1_0 != "":
+        return router.f1_0
+    elif router.f1_1 != "":
+        return router.f1_1
+    elif router.f2_0 != "":
+        return router.f2_0
+    elif router.f2_1 != "":
+        return router.f2_1
+    elif router.f3_0 != "":
+        return router.f3_0
+    elif router.f3_1 != "":
+        return router.f3_1
+    elif router.f4_0 != "":
+        return router.f4_0
+    elif router.f4_1 != "":
+        return router.f4_1
+    elif router.f5_0 != "":
+        return router.f5_0
+    elif router.f5_1 != "":
+        return router.f5_1
+    elif router.f6_0 != "":
+        return router.f6_0
+    elif router.f6_1 != "":
+        return router.f6_1
+    else:
+        return ""

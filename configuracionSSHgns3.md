@@ -1,5 +1,6 @@
 # COnfiguracion ssh para los routers
-ip domain-name asr.escom.ipn.mx
+configure terminal
+ip domain-name a.escom.ipn.mx
 ip ssh rsa keypair-name sshkey
 crypto key generate rsa usage-keys label sshkey modulus 1024
 ip ssh v 2
@@ -11,5 +12,13 @@ login local
 transport input ssh
 exit
 username admin privilege 15 password admin
-exit
+end
+wr
+
+# Baja ssh
+conf t
+line vty 0 15
+no transport input
+transport input telnet
+end
 wr
