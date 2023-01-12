@@ -28,20 +28,27 @@ class Telnet():
 
     @classmethod
     def levantar_telnet(cls,ip,username,password):
-        # Inicia un cliente SSH
-        ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # Conectarse
-        ssh_client.connect(ip, 22, username, password)
-        # Generamos el comando de configuracion telnet
-        comando = Telnet.generar_configuracion(username,password)
-        entrada, salida, error = ssh_client.exec_command(comando)
-        print (salida.read())
-
-        # Generamos el comando dar de baja ssh
+        # Creamos un socket telnet para realizar la configuracion por medio de telnet
+        cliente_telnet = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        
+        # Nos conectamos al ruoter
+        cliente_telnet.connect((ip,23))
+        # Accedemos a la cuenta telnet y nos logeamos
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("enable\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        time.sleep(1)
+        # Creamos el comando para la configuracion y lo ejcutamos
         comando = Telnet.desactivar_ssh()
-        entrada, salida, error = ssh_client.exec_command(comando)
-        print (salida.read())
-        # Cerrar la conexión
-        ssh_client.close()
+        cliente_telnet.send(comando.encode())
+        time.sleep(2)
+        res = cliente_telnet.recv(2048)
+        print(str(res).replace("\\n","\n").replace("\\r","\r"))
+        cliente_telnet.close()
+        return True

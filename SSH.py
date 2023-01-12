@@ -60,20 +60,13 @@ class SSH():
         time.sleep(2)
         res = cliente_telnet.recv(2048)
         print(str(res).replace("\\n","\n").replace("\\r","\r"))
-        cliente_telnet.close()
-
-        # Nos conectamos por ssh para dar de baja telnet
-        # Inicia un cliente SSH
-        ssh_client = paramiko.SSHClient()
-        # Establecer política por defecto para localizar la llave del host localmente
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # Conectarse
-        ssh_client.connect(ip, 22, username, password)
-        # Generamos el comando dar de baja telnet
+        # Damos de baja telnet
         comando = SSH.desactivar_telnet()
-        entrada, salida, error = ssh_client.exec_command(comando)
-        print (salida.read())
-        # Cerrar la conexión
-        ssh_client.close()
-        # En caso de que todo salira bien devolvemos verdadero
+        cliente_telnet.send(comando.encode())
+        # Esperamos unos segundo debido a que la creacion de las llaves tarda un poco
+        time.sleep(3)
+        res = cliente_telnet.recv(1024)
+        # Mostramos la configuracion realizada en pantalla
+        print(str(res).replace("\\n","\n").replace("\\r","\r"))
+        cliente_telnet.close()
         return True

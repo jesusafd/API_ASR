@@ -148,3 +148,48 @@ def extraccion_ip_interfaz(router):
         return router.f6_1
     else:
         return ""
+
+
+def asignacion_posicion_enrrutamiento(enrrutamiento,protocolo):
+    '''
+    asignacion_posicion_enrrutamiento se encarga de asignar un posicion al nuevo enrrutamiento
+    el sistema no permite dar de baja todos los enrruateintos por defecto uno debe seguir activo
+    por lo que las posiciones  a asiganar siempre seran 2 y 3
+
+    los objetos en python se pasan por referencia por lo que no es necesario retornar nada, ya que
+    se modifico el objeto, pero por buenas practicas se hace
+    '''
+    print(enrrutamiento.primero)
+    print(enrrutamiento.segundo)
+    print(enrrutamiento.tercero)
+    print(protocolo)
+    if enrrutamiento.segundo == None:
+        enrrutamiento.segundo = protocolo
+    else:
+        enrrutamiento.trecero = protocolo
+
+    print(enrrutamiento.primero)
+    print(enrrutamiento.segundo)
+    print(enrrutamiento.tercero)
+
+    return enrrutamiento
+
+def reasignacion_posicion_enrrutamiento(enrrutamiento,protocolo):
+    '''
+    reasignacion_posicion_enrrutamiento se encarga de recorrer el orden de los protocolos enrrutados
+    '''
+    if enrrutamiento.primero == protocolo:
+        enrrutamiento.primero = enrrutamiento.segundo
+        enrrutamiento.segundo = enrrutamiento.tercero
+        enrrutamiento.tercero = None
+    elif enrrutamiento.segundo == protocolo:
+        enrrutamiento.segundo = enrrutamiento.tercero
+        enrrutamiento.tercero = None
+    else:
+        enrrutamiento.tercero = None
+    
+    print(enrrutamiento.primero)
+    print(enrrutamiento.segundo)
+    print(enrrutamiento.tercero)
+
+    return enrrutamiento

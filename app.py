@@ -1,8 +1,13 @@
 from flask import Flask,request,render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from funcionesDatos import asignacion_direcciones_interfaz
+from funcionesDatos import asignacion_direcciones_interfaz,extraccion_ip_interfaz,asignacion_posicion_enrrutamiento,reasignacion_posicion_enrrutamiento
 from conexionTelnet import enrrutamineto_telnet
+from Worker import Worker
+from Monitoreo import Monitoreo
+import Enrrutamiento as E
+from SSH import SSH
+from Telnet import Telnet
 import rutas as r
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -10,7 +15,7 @@ import time
 import os
 import socket
 
-
+eunrrutamineto_activo = None
 app = Flask(__name__)
 IMG_FOLDER = os.path.join('static', 'IMG')
 app.config['UPLOAD_FOLDER'] = IMG_FOLDER
@@ -134,7 +139,7 @@ class Interface(db.Model):
             'interfaz':self.interfaz
         }
 
-# -----------------------------------Usuarios-----------------------------------
+# -----------------------------------Conexiones-----------------------------------
 class Conexion(db.Model):
     _tablename_='conexion'
     id = db.Column(db.String(64),primary_key=True)
@@ -143,6 +148,16 @@ class Conexion(db.Model):
     def set_data(self,data):
         self.id=data['id']
         self.tipo=data['tipo']
+
+
+# -----------------------------------Enrrutamiento-----------------------------------
+class Enrrutamiento(db.Model):
+    _tablename_='enrrutamiento'
+    id = db.Column(db.String(64),primary_key=True)
+    primero = db.Column(db.String(64))
+    segundo = db.Column(db.String(64))
+    tercero = db.Column(db.String(64))
+
 
 
 # -------------------------------------------------------------------------------
@@ -171,6 +186,11 @@ def limpiar():
     pcs = PC.query.all()
     for pc in pcs:
         db.session.delete(pc)
+    conexiones = Conexion.query.all()
+    for conexion in conexiones:
+        db.session.delete(conexion)
+    enrrutamiento.query.get('1')
+    db.session.delete(enrrutamiento)
     db.session.commit()
     return f'<h1>Topologia eliminada</h1>'
 
@@ -193,6 +213,7 @@ def agregar_routers():
     db.session.add(router)
     # Agregamos por defecto un usuario telnet
     conexion = Conexion()
+
     conexion.set_data({'id':router.id,'tipo':'telnet'})
     db.session.add(conexion)
     db.session.commit()
@@ -434,6 +455,7 @@ def generar_topologia():
 # ----------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------
 
+# Levanetamos primer enrrutamiento
 @app.route("/enrrutar",methods=["GET"])
 @app.route("/enrrutar/<protocolo>",methods=["GET"])
 @app.route("/enrrutar/<protocolo>/<id>",methods=["GET"])
@@ -444,6 +466,12 @@ def enrrutar(protocolo="RIP",id="PCMV"):
     id: el id del dispositivo desde el cual comenzaremos a enrrutar, en caso de que se 
         tengan mas maquinas virtuales conectadas, por defecto es PCMV
     '''
+
+    # Verificamos que no este enrrutado posteriormento
+    enrrutamiento = Enrrutamiento.query.all()
+    if len(enrrutamiento) > 0:
+        return '<h1>Ya se relizo un enrrutamiento posteriormento. Para cambiar de enrrutamiento favor de hacerlo mediante el endpoint enrrutamiento</h1>'
+
     G = nx.Graph()
     interfaces = Interface.query.all()
     # Generamos el grafico con todas las interfaces
@@ -468,12 +496,322 @@ def enrrutar(protocolo="RIP",id="PCMV"):
         # Nos conectamos a la direccion especificada
         cliente.connect((ruta[0],23))
         enrrutamineto_telnet(cliente,llave,ruta[1:],network[llave],protocolo)
+    
+    # reutilizamos la varible enrrutamiento ahora para crear un nuevo registro en la bd
+    enrrutamiento = Enrrutamiento()
+    # Al ser el primer enrutamietno todos los protocolos los colcamos vacios
+    # para posteriormente solo ingresar el que se levanto
+    
+    enrrutamiento.id = '1'
+    enrrutamiento.rip = None
+    enrrutamiento.ospf = None
+    enrrutamiento.eigrp = None
+    # Se asiganra al respectivo enrrutamiento a la posicion unicial
+    enrrutamiento.primero=protocolo
+    # Guardamos el registro en la base de datos
+    db.session.add(enrrutamiento)
+    db.session.commit()
     return '<h1>Enrrutado</h1>'
 
-@app.route("/enrrutar/<protocolo>/<id>",methods=["DELETE"])
-def desenrrutar(protocolo):
+@app.route("/enrrutamiento/<protocolo>",methods=["GET"])
+def enrrutamiento(protocolo):
+    # Extraemos el registro de enrrutamientos
+    enrrutamiento = Enrrutamiento.query.get('1')
+    # Verificamos si no ha sido enrrutado anteriormente
+    if enrrutamiento.primero == protocolo or enrrutamiento.segundo == protocolo or enrrutamiento.tercero == protocolo:
+        return f'<h1>{protocolo} ya configurado</h1>'
+
+
+    routers = Router.query.all()
+    interfaces = Interface.query.all()
+    # levantamos el nuevo enrrutamiento
+    for router in routers:
+        # y tomamos la direccion ip de cualqueira de sus interfaces
+        ip = extraccion_ip_interfaz(router)
+        cliente_telnet = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        cliente_telnet.connect((ip,23))
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("enable\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        network = []
+        # Extraemos las redes a configurar
+        for interfaz in interfaces:
+            if interfaz.dispositivoa == router.id or interfaz.dispositivob == router.id:
+                network.append(interfaz.ip)
+
+        if protocolo == 'RIP':
+            comando = E.Enrrutamiento.activar_rip(network)
+        elif protocolo == 'OSPF':
+            comando = E.Enrrutamiento.activar_ospf(network)
+        elif protocolo == 'EIGRP':
+            comando = E.Enrrutamiento.activar_eigrp(network)
+
+        cliente_telnet.recv(1024).decode()
+        cliente_telnet.send(comando.encode())
+        time.sleep(3)
+        res = cliente_telnet.recv(2048).decode()
+        print(str(res).replace("\\n","\n").replace("\\r","\r"))
+
+        cliente_telnet.send("exit".encode())
+        cliente_telnet.close()
+    enrrutamiento = Enrrutamiento.query.get('1')
+    #Agregamos el nuevo enrrutamiento con su respectivo nuemro
+    enrrutamiento=asignacion_posicion_enrrutamiento(enrrutamiento,protocolo)
+    db.session.commit()
+    return f'<h1>{protocolo} levantado</h1>'
+
+
+# --------------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------
+
+# Levantamos enrrutamiento
+@app.route("/enrrutamiento/<protocolo>/baja",methods=["GET"])
+def baja_enrrutamiento(protocolo):
+    # Verificamos que el enrrutamiento este levantado y no sea el unico
+    # ya que por defecto debe haber levantado uno siempre
+    enrrutamiento = Enrrutamiento.query.get('1')
+    # Verificamos que el protocolo este levantado en cualquier posicion
+    if enrrutamiento.primero == protocolo or enrrutamiento.segundo == protocolo or enrrutamiento.tercero == protocolo:
+        # Verificamos que exista pro lo menos un segundo enrrutamiento, de no existir retornamos un mensaje
+        if enrrutamiento.segundo == None:
+            return f'<h1>no se pudo desactivar el protocolo {protocolo} ya que es el unico</h1>'
+    routers = Router.query.all()
+    # Damos de baja el enrrutamiento    
+    for router in routers:
+        # y tomamos la direccion ip de cualqueira de sus interfaces
+        ip = extraccion_ip_interfaz(router)
+        cliente_telnet = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        cliente_telnet.connect((ip,23))
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("enable\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        
+        cliente_telnet.recv(1024)
+        if protocolo == 'RIP':
+            comando = E.Enrrutamiento.desactivar_rip()
+        elif protocolo == 'OSPF':
+            comando = E.Enrrutamiento.desactivar_ospf()
+        elif protocolo == 'EIGRP':
+            comando = E.Enrrutamiento.desactivar_eigrp()
+        
+        cliente_telnet.send(comando.encode())
+        time.sleep(3)
+        res = cliente_telnet.recv(2048).decode()
+        print(str(res).replace("\\n","\n").replace("\\r","\r"))
+
+        cliente_telnet.send("exit".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.close()
+    #Cambiamos la posocion de los enrrutamientos en la bd
+    enrrutamiento = reasignacion_posicion_enrrutamiento(enrrutamiento,protocolo)
+    db.session.commit()
+    return f'<h1>Se dio de baja el protocolo {protocolo}</h1>'
+
+
+# --------------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------
+
+# Mostramos protocolos levantados
+@app.route("/enrrutamiento",methods=["GET"])
+def protocolo_enrrutamiento():
+    enrrutamiento = Enrrutamiento.query.get('1')
+    return render_template("enrrutamiento.html", enrrutamiento=enrrutamiento)
+
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+# ----------------------------------------SSH---------------------------------------
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+
+@app.route("/ssh/<id>",methods=["GET"])
+@app.route("/ssh/<id>/<username>/<password>",methods=["GET"])
+def levantar_ssh(id,username="admin",password="admin"):
     '''
-    Es el endpoint encargado de realizar la baja del enrrutamiento dinamico especificado
-    comenzando desdesde el dispoositivo indicado
+    levantar_ssh realiza el cambio de la configuracion telnet a una configuracion ssh
+    recibe como parametros el id del router a configurar
+    y opcinalmente el username y password que se desa configurar, por defecto estas dos
+    son admin
     '''
-    pass
+    # Primero extraemos el router a configurar de la bd
+    router = Router.query.get_or_404(id)
+    # y tomamos la direccion ip de cualqueira de sus interfaces
+    ip = extraccion_ip_interfaz(router)
+    # En caso de que no encuentre una direccion ip valida, devolvera una cadena vacia
+    # lo cual en python es un valor falso
+    if not(ip):
+        return '<h1>Configuracion ssh no realizada</h1>'
+    # Mandamos a llamar al metodo estatico levantar ssh de la clase SSH
+    if SSH.levantar_ssh(ip,username,password):
+        # En caso de que todo sea correcto se hace el cambio del tipo de conexion
+        conexion=Conexion.query.get_or_404(id)
+        conexion.tipo="SSH"
+        db.session.commit()
+        return f'<h1>Configuracion ssh realizada</h1>'
+    else:
+        return '<h1>Configuracion ssh no realizada</h1>'
+
+
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+# --------------------------------------Telnet--------------------------------------
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+
+@app.route("/telnet/<id>",methods=["GET"])
+@app.route("/telnet/<id>/<username>/<password>",methods=["GET"])
+def levantar_telnet(id,username="admin",password="admin"):
+    '''
+    levantar_telnet realiza el cambio de la configuracion ssh a una configuracion telnet
+    recibe como parametros el id del router a configurar
+    y opcinalmente el username y password que se desa configurar, por defecto estas dos
+    son admin
+    '''
+    # Primero extraemos el router a configurar de la bd
+    router = Router.query.get_or_404(id)
+    # y tomamos la direccion ip de cualqueira de sus interfaces
+    ip = extraccion_ip_interfaz(router)
+    # En caso de que no encuentre una direccion ip valida, devolvera una cadena vacia
+    # lo cual en python es un valor falso
+    if not(ip):
+        return '<h1>Configuracion telnet no realizada</h1>'
+    # Mandamos a llamar al metodo estatico levantar ssh de la clase SSH
+    if Telnet.levantar_telnet(ip,username,password):
+        # En caso de que todo sea correcto se hace el cambio del tipo de conexion
+        conexion=Conexion.query.get_or_404(id)
+        conexion.tipo="telnet"
+        db.session.commit()
+        return f'<h1>Configuracion telnet realizada</h1>'
+    else:
+        return '<h1>Configuracion telnet no realizada</h1>'
+
+# ------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------SNMP-------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------
+@app.route("/snmp",methods=["GET"])
+def snmp():
+    routers = Router.query.all()
+    interfaces = Interface.query.all()
+    # levantamos snmp
+    for router in routers:
+        # y tomamos la direccion ip de cualqueira de sus interfaces
+        ip = extraccion_ip_interfaz(router)
+        cliente_telnet = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        cliente_telnet.connect((ip,23))
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("enable\n".encode())
+        cliente_telnet.recv(1024)
+        cliente_telnet.send("admin\n".encode())
+        network = []
+        # Extraemos las redes a configurar
+        for interfaz in interfaces:
+            if interfaz.dispositivoa == router.id or interfaz.dispositivob == router.id:
+                network.append(interfaz.ip)
+
+        comando = "config t\n"
+        comando += "snmp-server community public ro v2c\n"
+        comando += "snmp-server enable traps\n"
+        comando += "snmp-server host 10.0.1.2 public\n"
+        comando += "end\n"
+        comando += "wr\n"
+
+        cliente_telnet.recv(1024).decode()
+        cliente_telnet.send(comando.encode())
+        time.sleep(3)
+        res = cliente_telnet.recv(2048).decode()
+        print(str(res).replace("\\n","\n").replace("\\r","\r"))
+
+        cliente_telnet.send("exit".encode())
+        cliente_telnet.close()
+    return f'<h1>snmp levantado</h1>'
+
+
+
+cmdGen = cmdgen.CommandGenerator()
+
+
+
+community = 'public'
+
+# Hostname OID
+host_OID = '1.3.6.1.2.1.1.1.0'
+
+# Interface OID
+interface_OID = '1.3.6.1.2.1.2.2.1.11.1'
+
+@app.route("/monitorear/<interface>",methods=['GET'])
+@app.route("/monitorear/<interface>/<int:periodo>",methods=['GET'])
+def monitorear(interface,periodo=30):
+    os.remove("resultados.txt")
+    hilo = Worker()
+    hilo.start()
+    while True:
+        Monitoreo.grabar(interface,community,host_OID,interface_OID)
+        time.sleep(periodo) 
+
+
+@app.route("/graficar")
+def graficar():
+    x_time = []
+    in_packets = []
+    ant_in_packets = 0
+    paquetes = 0    
+    estado = True
+    caidas = []
+    with open('resultados.txt', 'r') as f:
+        for line in f.readlines():
+            line = eval(line)
+            if (len(x_time) == 0):
+                x_time.append(line['Tiempo'])
+                ant_in_packets=float(line['Fa0-0_In_uPackets'])
+                in_packets.append(10)
+                estado = True
+            else:   
+                x_time.append(line['Tiempo'])
+                if line['Fa0-0_In_uPackets'] is None :
+                    in_packets.append(0)
+                    #Si el estado anterior es True quiere decir que la
+                    #la interface esta apagada o caida
+                    if estado:
+                        caidas.append(line['Tiempo'])
+                        estado = False
+                else:
+                    
+                    paquetes=float(line['Fa0-0_In_uPackets'])-ant_in_packets
+                    if paquetes > 0:
+                        in_packets.append(paquetes)
+                        ant_in_packets=float(line['Fa0-0_In_uPackets'])
+                    else:
+                        in_packets.append(in_packets[-1])
+                    if estado:
+                        estado = True
+                    else:
+                        #si el estado anterior es falso esto quiere decir que
+                        #que la interface fue encendida o leventada
+                        estado = True
+                        caidas.append(line['Tiempo'])
+    
+    plt.plot(x_time,in_packets)
+    for i in caidas:
+        plt.vlines(i,0,80)
+    plt.savefig("static/IMG/grafica.png")
+    time.sleep(1)
+    grafica = os.path.join(app.config['UPLOAD_FOLDER'], 'grafica.png')
+    return render_template("grafica.html", image=grafica)

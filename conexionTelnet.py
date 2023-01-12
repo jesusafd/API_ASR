@@ -24,7 +24,7 @@ def enrrutamineto_telnet(cliente_telnet,router,ruta,network,enrrutamiento):
         # si el largo de ruta no es igual a 0, aun tenemos saltos que
         # hacer para llegar al router a enrrutar
         cliente_telnet.send(f'telnet {ruta[0]}\n'.encode())
-        enrrutamineto_telnet(cliente_telnet,router,ruta[1:],network)
+        enrrutamineto_telnet(cliente_telnet,router,ruta[1:],network,enrrutamiento)
     else:
         # Una vez que el arreglo ruta este vacio quiere decir que llegamos
         # al router a enrrutar, por lo que llamaremos a la funcion del 
@@ -42,7 +42,6 @@ def enrrutamineto_telnet(cliente_telnet,router,ruta,network,enrrutamiento):
         time.sleep(3)
         res = cliente_telnet.recv(2048).decode()
         print(str(res).replace("\\n","\n").replace("\\r","\r"))
-
     cliente_telnet.send("exit".encode())
     res=cliente_telnet.recv(1024)
 

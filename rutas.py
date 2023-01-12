@@ -1,11 +1,14 @@
 import networkx as  nx
 def rutas(G,id):
+    print("Entre")
     '''
     Rutas permite obtener la ruta a cada uno de los routers de la topoligia, partiendo del
     dispositivo especificado en el parametro id
     '''
     # Calculamos los caminos mas cortos de punto especificado al resto de los nodos
+    print("Entre")
     camino_corto = nx.single_source_shortest_path(G,id)
+    print("Entre")
     # Solo nos importan los caminos de la maquina virtual a los routers, por lo que excluimos
     # las llaves que contengan la subcadena PC
     rutas = {}
