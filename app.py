@@ -1,6 +1,7 @@
 from flask import Flask,request,render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from pysnmp.entity.rfc3413.oneliner import cmdgen
 from funcionesDatos import asignacion_direcciones_interfaz,extraccion_ip_interfaz,asignacion_posicion_enrrutamiento,reasignacion_posicion_enrrutamiento
 from conexionTelnet import enrrutamineto_telnet
 from Worker import Worker
